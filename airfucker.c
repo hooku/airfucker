@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 // Simplelink includes
 #include "simplelink.h"
@@ -21,14 +22,12 @@
 #include "common.h"
 #include "uart_if.h"
 
-#include "pinmux.h"
+#define AF_CHANNEL_MAX          13
+#define AF_CHANNEL_HOP_INTVL    500 // ms
 
-//*****************************************************************************
-//                 GLOBAL VARIABLES -- Start
-//*****************************************************************************
-volatile unsigned long  g_ulStatus = 0; //SimpleLink Status
+u8 ch_hoop[] = { 1, 6, 11, 3, 8, 13, 5, 10, 2, 7, 12, 4, 9 };
 
-char RawData_Ping[] = {
+uint8_t RawData_Ping[] = {
        /*---- wlan header start -----*/
        0x88,                                /* version , type sub type */
        0x02,                                /* Frame control flag */
@@ -66,21 +65,28 @@ char RawData_Ping[] = {
        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
        0x00, 0x00, 0x00, 0x00};
 
-#if defined(ccs)
-extern void (* const g_pfnVectors[])(void);
-#endif
-#if defined(ewarm)
+typedef struct __Mac_Addr_ {
+    uint8_t addr[6];
+} Mac_Addr
+
+Mac_Addr victim_list[] = {
+    { 0x0c, 0x49,  51, 0x88, 0xc3, 0x11 },
+    { 0xcc, 0x08, 251, 0x61, 0x03, 0x8e },
+    { 0xcc, 0x08, 251, 0x61, 0x03, 0x90 },
+    { 0x8c, 0xa6, 223, 0x4f, 0x65, 0x2a },
+    { 0xdc, 0xfe,  24, 0x0b, 0x71, 0xd6 },
+    { 0x78, 0x11, 220, 0x4b, 0x90, 0xb9 },
+    { 0x88, 0x25, 147, 0x15, 0xb1, 0xc6 },
+    { 0xfc, 0x19, 208, 0x6d, 0x75, 0xb8 },
+    { 0x78, 0x11, 220, 0x4b, 0x90, 0xba },
+};
+
+uint32_t victim_tbl_hash[MAX_HASH_TBL] = { 0 };
+uint32_t victim_tbl_len = 0;
+
 extern uVectorEntry __vector_table;
-#endif
 
-static UserIn UserInput();
-static int Tx_continuous(int iChannel,SlRateIndex_e rate,int iNumberOfPackets,\
-                                   int iTxPowerLevel,long dIntervalMiliSec);
-static int RxStatisticsCollect();
-static void DisplayBanner(char * AppName);
-static void BoardInit(void);
-
-static void BoardInit(void)
+static void platform_init(void)
 {
     MAP_IntVTableBaseSet((unsigned long)&__vector_table);
 
@@ -88,28 +94,54 @@ static void BoardInit(void)
     MAP_IntEnable(FAULT_SYSTICK);
 
     PRCMCC3200MCUInit();
+    
+    PinMuxConfig();
+}
+
+void af_init(void)
+{
+    // calc mac hashs
+    for (victim_tbl_len = 0; victim_tbl_len < sizeof(victim_list)/sizeof(Mac_Addr);
+         victim_tbl_len ++)
+    {
+        victim_tbl_hash[victim_tbl_len] = (uint32_t)(*(((uint8_t)&victim_list[victim_tbl_len]) + 1));
+    }
+}
+
+void hop(void)
+{
+    // hopping:
+    for (i_ch = 1; i_ch <= AF_CHANNEL_MAX; i_ch ++)
+    {
+        while (1)
+        {
+            g_el_sock = sl_Socket(SL_AF_RF, SL_SOCK_RAW, ch_hoop[i_ch]);
+            if (g_el_sock == SL_EALREADY_ENABLED)   // close in progress..
+            {
+                mico_thread_msleep(MICO32_EASYLINK_LIB_CHANNEL_HOPPING_BREATH);
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+}
+
+void fuck(void)
+{
+    // listen for a while, extract Mac Info
 }
 
 int main()
 {
-    int iFlag = 1;
-    long ret = -1;
-    char cChar;
-    unsigned char policyVal;
-
-    BoardInit();
-    PinMuxConfig();
+    platform_init();
     
     InitTerm();
 
-    ret = ConfigureSimpleLinkToDefaultState();
-    ASSERT_ON_ERROR(ret);
-
-    ret = sl_Start(0, 0, 0);
-    ASSERT_ON_ERROR(ret);
-
-    ret = sl_Stop(SL_STOP_TIMEOUT);
+    af_init();
+    af_reset_wifi();
+    af_fuck(victim_tbl_hash, victim_tbl_len);
 
     LOOP_FOREVER();
-
 }

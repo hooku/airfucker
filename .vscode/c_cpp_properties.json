@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "name": "IAR_ARMv7m",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:\\Program Files (x86)\\IAR Systems\\Embedded Workbench 8.0\\arm\\inc\\c",
+                "C:\\TI\\CC3200SDK_1.5.0\\cc3200-sdk\\driverlib",
+                "C:\\TI\\CC3200SDK_1.5.0\\cc3200-sdk\\inc",
+                "C:\\TI\\CC3200SDK_1.5.0\\cc3200-sdk\\example\\common",
+                "C:\\TI\\CC3200SDK_1.5.0\\cc3200-sdk\\simplelink\\include",
+                "C:\\TI\\CC3200SDK_1.5.0\\cc3200-sdk\\simplelink_extlib\\provisioninglib"
+            ],
+            "defines": [
+                "ewarm",
+                "__INT8_T_TYPE__",
+                "__INT16_T_TYPE__",
+                "__INT32_T_TYPE__"
+            ],
+            "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/bin/cl.exe",
+            "cStandard": "c11",
+            "intelliSenseMode": "msvc-x64"
+        }
+    ],
+    "version": 4
+}

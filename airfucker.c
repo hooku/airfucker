@@ -7,7 +7,7 @@
 // Simplelink includes
 #include "simplelink.h"
 
-//Driverlib includes
+// Driverlib includes
 #include "hw_types.h"
 #include "hw_ints.h"
 #include "interrupt.h"
@@ -18,14 +18,17 @@
 #include "rom.h"
 #include "rom_map.h"
 
-//Common interface includes
+// Common interface includes
 #include "common.h"
 #include "uart_if.h"
 
+#include "airfucker.h"
+
 #define AF_CHANNEL_MAX          13
 #define AF_CHANNEL_HOP_INTVL    500 // ms
+#define AF_HASH_TBL_SZ          60
 
-u8 ch_hoop[] = { 1, 6, 11, 3, 8, 13, 5, 10, 2, 7, 12, 4, 9 };
+uint8_t ch_hoop[] = { 1, 6, 11, 3, 8, 13, 5, 10, 2, 7, 12, 4, 9 };
 
 uint8_t RawData_Ping[] = {
        /*---- wlan header start -----*/
@@ -63,13 +66,9 @@ uint8_t RawData_Ping[] = {
        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-       0x00, 0x00, 0x00, 0x00};
+       0x00, 0x00, 0x00, 0x00 };
 
-typedef struct __Mac_Addr_ {
-    uint8_t addr[6];
-} Mac_Addr
-
-Mac_Addr victim_list[] = {
+Mac_Addr victim_bss_list[] = {
     { 0x0c, 0x49,  51, 0x88, 0xc3, 0x11 },
     { 0xcc, 0x08, 251, 0x61, 0x03, 0x8e },
     { 0xcc, 0x08, 251, 0x61, 0x03, 0x90 },
@@ -81,7 +80,7 @@ Mac_Addr victim_list[] = {
     { 0x78, 0x11, 220, 0x4b, 0x90, 0xba },
 };
 
-uint32_t victim_tbl_hash[MAX_HASH_TBL] = { 0 };
+uint32_t victim_tbl_hash[AF_HASH_TBL_SZ] = { 0 };
 uint32_t victim_tbl_len = 0;
 
 extern uVectorEntry __vector_table;
@@ -100,15 +99,19 @@ static void platform_init(void)
 
 void af_init(void)
 {
+    platform_init();
+    
+    InitTerm();
+
     // calc mac hashs
-    for (victim_tbl_len = 0; victim_tbl_len < sizeof(victim_list)/sizeof(Mac_Addr);
+    for (victim_tbl_len = 0; victim_tbl_len < sizeof(victim_bss_list)/sizeof(Mac_Addr);
          victim_tbl_len ++)
     {
         victim_tbl_hash[victim_tbl_len] = (uint32_t)(*(((uint8_t)&victim_list[victim_tbl_len]) + 1));
     }
 }
 
-void hop(void)
+void af_hop(void)
 {
     // hopping:
     for (i_ch = 1; i_ch <= AF_CHANNEL_MAX; i_ch ++)
@@ -133,11 +136,8 @@ void fuck(void)
     // listen for a while, extract Mac Info
 }
 
-int main()
+int main(void)
 {
-    platform_init();
-    
-    InitTerm();
 
     af_init();
     af_reset_wifi();

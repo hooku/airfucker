@@ -1,4 +1,7 @@
+#include "simplelink.h"
+#include "wlan.h"
 
+#include "../af_config.h"
 
 void SimpleLinkWlanEventHandler(SlWlanEvent_t *pWlanEvent)
 {
@@ -15,10 +18,6 @@ void SimpleLinkHttpServerCallback(SlHttpServerEvent_t *pHttpEvent,
 
 void SimpleLinkGeneralEventHandler(SlDeviceEvent_t *pDevEvent)
 {
-    //
-    // Most of the general errors are not FATAL are are to be handled
-    // appropriately by the application
-    //
     UART_PRINT("[GENERAL EVENT] - ID=[%d] Sender=[%d]\n\n",
                pDevEvent->EventData.deviceEvent.status,
                pDevEvent->EventData.deviceEvent.sender);
@@ -28,10 +27,10 @@ void SimpleLinkSockEventHandler(SlSockEvent_t *pSock)
 {
 }
 
-static long ConfigureSimpleLinkToDefaultState()
+static long psp_default_state()
 {
-    SlVersionFull   ver = {0};
-    _WlanRxFilterOperationCommandBuff_t  RxFilterIdMask = {0};
+    SlVersionFull ver = {0};
+    _WlanRxFilterOperationCommandBuff_t RxFilterIdMask = {0};
 
     unsigned char ucVal = 1;
     unsigned char ucConfigOpt = 0;
@@ -157,3 +156,55 @@ static long ConfigureSimpleLinkToDefaultState()
     
     return ret; // Success
 }
+
+void psp_hop(void)
+{
+    // hopping:
+    for (i_ch = 1; i_ch <= AF_CHANNEL_MAX; i_ch ++)
+    {
+        while (1)
+        {
+            g_el_sock = sl_Socket(SL_AF_RF, SL_SOCK_RAW, ch_hoop[i_ch]);
+            if (g_el_sock == SL_EALREADY_ENABLED)   // close in progress..
+            {
+                mico_thread_msleep(AF_EASYLINK_LIB_CHANNEL_HOPPING_BREATH);
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+}
+
+_u8 psp_scan_ap(Sl_WlanNetworkEntry_t *sl_ap_list)
+{
+    _u8 policy;
+    _u32 interval_sec;
+    
+    _u8 ap_count;
+    
+    policy = SL_SCAN_POLICY(1);         // SL_SCAN_ENABLE
+    interval_sec = AF_SCAN_INTERVAL;
+    
+    // http://www.ti.com/lit/ug/swru368/swru368.pdf
+    // after the scan interval is set, an immediate scan is activated
+    sl_WlanPolicySet(SL_POLICY_SCAN, policy, (_u8 *)&interval_sec, sizeof(interval_sec));
+    
+    // http://e2e.ti.com/support/wireless_connectivity/f/968/t/354686.aspx
+    // it takes about 900 msec to scan all the channels
+    
+    // we just block AF_AP_SCAN_DELAY ms to wait for scan finish, then we can retrieve scan results
+    mico_thread_msleep(AF_AP_SCAN_DELAY);
+    
+    // result hardlimit: 20 ssid
+    ap_count = sl_WlanGetNetworkList(0, AF_AP_SCAN_COUNT, sl_ap_list);
+
+    // disable scan
+    policy = SL_SCAN_POLICY(0);         // SL_SCAN_DISABLE
+    sl_WlanPolicySet(SL_POLICY_SCAN, policy, 0, 0);
+  
+    return ap_count;
+}
+
+ psp_init_wlan

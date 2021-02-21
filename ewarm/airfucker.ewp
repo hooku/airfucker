@@ -32,11 +32,11 @@
                 </option>
                 <option>
                     <name>Input description</name>
-                    <state>Automatic choice of formatter.</state>
+                    <state>Automatic choice of formatter, without multibyte support.</state>
                 </option>
                 <option>
                     <name>Output description</name>
-                    <state>Automatic choice of formatter.</state>
+                    <state>Automatic choice of formatter, without multibyte support.</state>
                 </option>
                 <option>
                     <name>GOutputBinary</name>
@@ -341,14 +341,14 @@
                 <option>
                     <name>CCIncludePath2</name>
                     <state>$PROJ_DIR$</state>
-                    <state>$PROJ_DIR$/../</state>
-                    <state>$PROJ_DIR$/../../common/</state>
-                    <state>$PROJ_DIR$/../../../driverlib/</state>
-                    <state>$PROJ_DIR$/../../../inc/</state>
-                    <state>$PROJ_DIR$/../../../simplelink/</state>
-                    <state>$PROJ_DIR$/../../../simplelink/source</state>
-                    <state>$PROJ_DIR$/../../../simplelink/include</state>
-                    <state>$PROJ_DIR$/../../../simplelink_extlib/provisioninglib</state>
+                    <state>C:/TI/CC3200SDK_1.5.0/cc3200-sdk/example/</state>
+                    <state>C:/TI/CC3200SDK_1.5.0/cc3200-sdk/example/common/</state>
+                    <state>C:/TI/CC3200SDK_1.5.0/cc3200-sdk/driverlib/</state>
+                    <state>C:/TI/CC3200SDK_1.5.0/cc3200-sdk/inc/</state>
+                    <state>C:/TI/CC3200SDK_1.5.0/cc3200-sdk/simplelink/</state>
+                    <state>C:/TI/CC3200SDK_1.5.0/cc3200-sdk/simplelink/source</state>
+                    <state>C:/TI/CC3200SDK_1.5.0/cc3200-sdk/simplelink/include</state>
+                    <state>C:/TI/CC3200SDK_1.5.0/cc3200-sdk/simplelink_extlib/provisioninglib</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -598,7 +598,7 @@
                 </option>
                 <option>
                     <name>AOutputFile</name>
-                    <state></state>
+                    <state>$FILE_BNAME$.o</state>
                 </option>
                 <option>
                     <name>ALimitErrorsCheck</name>
@@ -815,8 +815,8 @@
                 </option>
                 <option>
                     <name>IlinkAdditionalLibs</name>
-                    <state>$PROJ_DIR$/../../../simplelink/ewarm/NON_OS/Exe/simplelink.a</state>
-                    <state>$PROJ_DIR$/../../../driverlib/ewarm/Release/Exe/driverlib.a</state>
+                    <state>C:/TI/CC3200SDK_1.5.0/cc3200-sdk/simplelink/ewarm/NON_OS/Exe/simplelink.a</state>
+                    <state>C:/TI/CC3200SDK_1.5.0/cc3200-sdk/driverlib/ewarm/Release/Exe/driverlib.a</state>
                 </option>
                 <option>
                     <name>IlinkOverrideProgramEntryLabel</name>
@@ -1028,16 +1028,58 @@
             <data />
         </settings>
     </configuration>
+    <group>
+        <name>common</name>
+        <file>
+            <name>$PROJ_DIR$\..\..\..\..\TI\CC3200SDK_1.5.0\cc3200-sdk\example\common\common.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\..\..\TI\CC3200SDK_1.5.0\cc3200-sdk\example\common\network_common.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\..\..\TI\CC3200SDK_1.5.0\cc3200-sdk\example\common\startup_ewarm.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\..\..\TI\CC3200SDK_1.5.0\cc3200-sdk\example\common\uart_if.c</name>
+        </file>
+    </group>
+    <group>
+        <name>ie80211</name>
+        <file>
+            <name>$PROJ_DIR$\..\ie80211\ie80211.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\ie80211\ie80211_main.c</name>
+        </file>
+    </group>
+    <group>
+        <name>psp</name>
+        <group>
+            <name>cc3200</name>
+            <file>
+                <name>$PROJ_DIR$\..\psp\cc3200\pinmux.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\psp\cc3200\psp_platform.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\psp\cc3200\psp_wifi.c</name>
+            </file>
+        </group>
+        <file>
+            <name>$PROJ_DIR$\..\psp\psp.h</name>
+        </file>
+    </group>
     <file>
-        <name>$PROJ_DIR$\..\airfucker.c</name>
+        <name>$PROJ_DIR$\..\af_common.h</name>
     </file>
     <file>
-        <name>$PROJ_DIR$\..\..\common\network_common.c</name>
+        <name>$PROJ_DIR$\..\af_config.h</name>
     </file>
     <file>
-        <name>$PROJ_DIR$\..\..\common\startup_ewarm.c</name>
+        <name>$PROJ_DIR$\..\af_log.c</name>
     </file>
     <file>
-        <name>$PROJ_DIR$\..\..\common\uart_if.c</name>
+        <name>$PROJ_DIR$\..\af_main.c</name>
     </file>
 </project>

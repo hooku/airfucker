@@ -1,7 +1,13 @@
-#include "simplelink.h"
-#include "wlan.h"
+#include "../../af_common.h"
+#include "../../af_config.h"
+#include "../psp.h"
+#include "../ie80211/ie80211.h"
 
-#include "../af_config.h"
+unsigned long   g_ulStatus      = 0;            // global link(layer2 & layer3) status
+_i16            g_80211_sock    = 0;
+int             g_channel       = 6;
+
+_i8 g_pkt_buffer[AF_80211_MAX_PKT];
 
 void SimpleLinkWlanEventHandler(SlWlanEvent_t *pWlanEvent)
 {
@@ -27,7 +33,7 @@ void SimpleLinkSockEventHandler(SlSockEvent_t *pSock)
 {
 }
 
-static long psp_default_state()
+int16_t psp_wifi_default_state()
 {
     SlVersionFull ver = {0};
     _WlanRxFilterOperationCommandBuff_t RxFilterIdMask = {0};
@@ -37,7 +43,7 @@ static long psp_default_state()
     unsigned char ucConfigLen = 0;
     unsigned char ucPower = 0;
 
-    long ret = -1;
+    int16_t ret = FAILURE;
     long lMode = -1;
 
     lMode = sl_Start(0, 0, 0);
@@ -46,18 +52,6 @@ static long psp_default_state()
     // If the device is not in station-mode, try configuring it in station-mode 
     if (ROLE_STA != lMode)
     {
-        if (ROLE_AP == lMode)
-        {
-            // If the device is in AP mode, we need to wait for this event 
-            // before doing anything 
-            while(!IS_IP_ACQUIRED(g_ulStatus))
-            {
-#ifndef SL_PLATFORM_MULTI_THREADED
-              _SlNonOsMainLoopTask(); 
-#endif
-            }
-        }
-
         // Switch to STA role and restart 
         ret = sl_WlanSetMode(ROLE_STA);
         ASSERT_ON_ERROR(ret);
@@ -143,41 +137,92 @@ static long psp_default_state()
     ret = sl_NetAppMDNSUnRegisterService(0, 0);
     ASSERT_ON_ERROR(ret);
 
-    // Remove  all 64 filters (8*8)
+    // Remove all 64 filters (8*8)
     memset(RxFilterIdMask.FilterIdMask, 0xFF, 8);
     ret = sl_WlanRxFilterSet(SL_REMOVE_RX_FILTER, (_u8 *)&RxFilterIdMask,
                        sizeof(_WlanRxFilterOperationCommandBuff_t));
     ASSERT_ON_ERROR(ret);
 
-    ret = sl_Stop(SL_STOP_TIMEOUT);
-    ASSERT_ON_ERROR(ret);
-
-    InitializeAppVariables();
-    
-    return ret; // Success
+    return ret;
 }
 
-void psp_hop(void)
+int16_t psp_wifi_monitor_mode()
 {
-    // hopping:
-    for (i_ch = 1; i_ch <= AF_CHANNEL_MAX; i_ch ++)
-    {
-        while (1)
-        {
-            g_el_sock = sl_Socket(SL_AF_RF, SL_SOCK_RAW, ch_hoop[i_ch]);
-            if (g_el_sock == SL_EALREADY_ENABLED)   // close in progress..
-            {
-                mico_thread_msleep(AF_EASYLINK_LIB_CHANNEL_HOPPING_BREATH);
-            }
-            else
-            {
-                break;
-            }
-        }
-    }
+    int16_t ret = FAILURE;
+
+    ret = sl_Stop(0xFF);
+    ret = sl_Start(0, 0, 0);
+
+    return ret;
 }
 
-_u8 psp_scan_ap(Sl_WlanNetworkEntry_t *sl_ap_list)
+uint8_t psp_wifi_hop()
+{
+    struct SlTimeval_t  time_value;
+
+    static _i8 i_ch;
+
+    i_ch = (i_ch + 1)%AF_CHANNEL_MAX;
+    g_channel = ch_hoop[i_ch];
+    
+    if (g_80211_sock)
+    {
+        sl_Close(g_80211_sock);
+    }
+    g_80211_sock = sl_Socket(SL_AF_RF, SL_SOCK_RAW, ch_hoop[i_ch]);
+
+    time_value.tv_sec   = 0;
+    time_value.tv_usec  = 1000;
+    sl_SetSockOpt(g_80211_sock, SL_SOL_SOCKET, SL_SO_RCVTIMEO, (_u8 *)&time_value, sizeof(time_value));
+
+    return g_channel;
+}
+
+ieee80211_header *psp_wifi_read_pkt()
+{
+    _i16 wlan_result;
+    
+    static uint16_t     last_seq;
+    
+    SlTransceiverRxOverHead_t   *hdr_rx_overhead    = (SlTransceiverRxOverHead_t *)g_pkt_buffer;
+    ieee80211_header            *hdr_80211          = (ieee80211_header *)(g_pkt_buffer + sizeof(SlTransceiverRxOverHead_t));
+    
+    wlan_result = sl_Recv(g_80211_sock, g_pkt_buffer, AF_80211_MAX_PKT, 0);
+    
+    if ((wlan_result <= 0) ||
+        (wlan_result <= (sizeof(SlTransceiverRxOverHead_t) + sizeof(ieee80211_header))))
+    {
+        return 0;
+    }
+
+    // reject duplicated pkt:
+    if (hdr_80211->ctl_seq == last_seq)
+    {
+        return 0;
+    }
+    last_seq = hdr_80211->ctl_seq;          // filter duplicate len value (TODO: we need figure out why)
+    
+    return hdr_80211;
+}
+
+int16_t psp_wifi_write_pkt(ieee80211_header *pkt, short len)
+{
+    int16_t ret = FAILURE;
+
+    _i16 wlan_result;
+
+    wlan_result = sl_Send(g_80211_sock, pkt, len, SL_RAW_RF_TX_PARAMS(g_channel,  RATE_11M, 0, AF_80211_PREAMBLE));
+
+    if(wlan_result < 0)
+    {
+        sl_Close(g_80211_sock);
+        ASSERT_ON_ERROR(wlan_result);
+    }
+
+    return ret;
+}
+
+_u8 psp_wifi_scan(Sl_WlanNetworkEntry_t *sl_ap_list)
 {
     _u8 policy;
     _u32 interval_sec;
@@ -206,5 +251,3 @@ _u8 psp_scan_ap(Sl_WlanNetworkEntry_t *sl_ap_list)
   
     return ap_count;
 }
-
- psp_init_wlan

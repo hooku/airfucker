@@ -41,7 +41,6 @@
 //
 //*****************************************************************************
 
-#include "pinmux.h"
 #include "hw_types.h"
 #include "hw_memmap.h"
 #include "hw_gpio.h"
